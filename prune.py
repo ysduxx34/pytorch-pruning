@@ -11,12 +11,14 @@ def replace_layers(model, i, indexes, layers):
 	return model[i]
 
 def prune_vgg16_conv_layer(model, layer_index, filter_index):
-	_, conv = model.features._modules.items()[layer_index]
+	# _, conv = model.features._modules.items()[layer_index]
+	_, conv = list(model.features._modules.items())[layer_index]
+
 	next_conv = None
 	offset = 1
 
 	while layer_index + offset <  len(model.features._modules.items()):
-		res =  model.features._modules.items()[layer_index+offset]
+		res =  list(model.features._modules.items())[layer_index+offset]
 		if isinstance(res[1], torch.nn.modules.conv.Conv2d):
 			next_name, next_conv = res
 			break
@@ -30,7 +32,7 @@ def prune_vgg16_conv_layer(model, layer_index, filter_index):
 			padding = conv.padding,
 			dilation = conv.dilation,
 			groups = conv.groups,
-			bias = conv.bias)
+			bias = True)#conv.bias)
 
 	old_weights = conv.weight.data.cpu().numpy()
 	new_weights = new_conv.weight.data.cpu().numpy()
@@ -55,7 +57,7 @@ def prune_vgg16_conv_layer(model, layer_index, filter_index):
 				padding = next_conv.padding,
 				dilation = next_conv.dilation,
 				groups = next_conv.groups,
-				bias = next_conv.bias)
+				bias = True)#next_conv.bias)
 
 		old_weights = next_conv.weight.data.cpu().numpy()
 		new_weights = next_new_conv.weight.data.cpu().numpy()
@@ -90,7 +92,7 @@ def prune_vgg16_conv_layer(model, layer_index, filter_index):
 
 	 	if old_linear_layer is None:
 	 		raise BaseException("No linear laye found in classifier")
-		params_per_input_channel = old_linear_layer.in_features / conv.out_channels
+	 	params_per_input_channel = old_linear_layer.in_features / conv.out_channels
 
 	 	new_linear_layer = \
 	 		torch.nn.Linear(old_linear_layer.in_features - params_per_input_channel, 
@@ -98,7 +100,9 @@ def prune_vgg16_conv_layer(model, layer_index, filter_index):
 	 	
 	 	old_weights = old_linear_layer.weight.data.cpu().numpy()
 	 	new_weights = new_linear_layer.weight.data.cpu().numpy()	 	
-
+        
+	 	filter_index = int(filter_index)
+	 	params_per_input_channel = int(params_per_input_channel)
 	 	new_weights[:, : filter_index * params_per_input_channel] = \
 	 		old_weights[:, : filter_index * params_per_input_channel]
 	 	new_weights[:, filter_index * params_per_input_channel :] = \
@@ -108,14 +112,14 @@ def prune_vgg16_conv_layer(model, layer_index, filter_index):
 
 	 	new_linear_layer.weight.data = torch.from_numpy(new_weights).cuda()
 
-		classifier = torch.nn.Sequential(
+	 	classifier = torch.nn.Sequential(
 			*(replace_layers(model.classifier, i, [layer_index], \
 				[new_linear_layer]) for i, _ in enumerate(model.classifier)))
 
-		del model.classifier
-		del next_conv
-		del conv
-		model.classifier = classifier
+	 	del model.classifier
+	 	del next_conv
+	 	del conv
+	 	model.classifier = classifier
 
 	return model
 
@@ -125,4 +129,4 @@ if __name__ == '__main__':
 
 	t0 = time.time()
 	model = prune_conv_layer(model, 28, 10)
-	print "The prunning took", time.time() - t0
+	print ("The prunning took", time.time() - t0)
