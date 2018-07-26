@@ -1,3 +1,7 @@
+Fork from https://github.com/jacobgil/pytorch-pruning but it can use only python2 and pytorch0.2
+Now it can use python3.6 and newest pytorch 0.4
+And I will prune mobilenet here.
+
 ## PyTorch implementation of  [\[1611.06440 Pruning Convolutional Neural Networks for Resource Efficient Inference\]](https://arxiv.org/abs/1611.06440) ##
 
 This demonstrates pruning a VGG16 based classifier that classifies a small dog/cat dataset.
